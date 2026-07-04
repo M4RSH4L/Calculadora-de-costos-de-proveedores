@@ -1,0 +1,290 @@
+.container {
+  margin-bottom: var(--space-8);
+  animation: fadeIn var(--duration-slow) var(--ease-out) both;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.headerIcon {
+  color: var(--color-primary);
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+
+.savingsBadge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-success-muted);
+  border: 1px solid hsl(142, 40%, 84%);
+  border-radius: var(--radius-md);
+}
+
+.savingsLabel {
+  font-size: var(--text-xs);
+  color: var(--color-success);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.savingsValue {
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: var(--color-success);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.column {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition:
+    box-shadow var(--duration-normal) var(--ease-out),
+    transform var(--duration-normal) var(--ease-out);
+  position: relative;
+}
+
+.column:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.bestColumn {
+  border-color: var(--color-success);
+  box-shadow: var(--shadow-sm), 0 0 0 1px hsl(142, 68%, 70%);
+}
+
+.bestBanner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px;
+  background: var(--color-success);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  z-index: 10;
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  margin-top: 26px;
+}
+
+.bestColumn .columnHeader {
+  margin-top: 26px;
+}
+
+.column:not(.bestColumn) .columnHeader {
+  margin-top: 0;
+}
+
+.columnEmoji {
+  font-size: 20px;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2));
+  flex-shrink: 0;
+}
+
+.columnHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.columnBrand {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.columnProvider {
+  font-size: var(--text-xs);
+  color: rgba(255,255,255,0.65);
+}
+
+.columnBody {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.columnProduct {
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  line-height: var(--leading-tight);
+}
+
+.priceBlock {
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.priceBlockBest {
+  background: var(--color-success-muted);
+  border-color: hsl(142, 40%, 84%);
+}
+
+.priceSubLabel, .priceMainLabel {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-tertiary);
+}
+
+.priceSub {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: var(--space-2);
+}
+
+.priceMainLabel {
+  color: var(--color-text-secondary);
+}
+
+.priceBlockBest .priceMainLabel {
+  color: var(--color-success);
+}
+
+.priceMain {
+  font-size: var(--text-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.priceBlockBest .priceMain {
+  color: var(--color-success);
+}
+
+.diffBadge {
+  margin-top: var(--space-2);
+  padding: 3px 8px;
+  background: var(--color-danger-muted);
+  border: 1px solid hsl(355, 60%, 88%);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-danger);
+  align-self: flex-start;
+}
+
+.bestPriceBadge {
+  margin-top: var(--space-2);
+  padding: 3px 8px;
+  background: var(--color-success-muted);
+  border: 1px solid hsl(142, 50%, 80%);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-success);
+  align-self: flex-start;
+}
+
+.sugeridoRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sugeridoLabel {
+  font-size: var(--text-xs);
+  color: var(--color-text-tertiary);
+}
+
+.sugeridoValue {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.conditionsBtn {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out);
+}
+
+.conditionsBtn:hover {
+  background: var(--color-primary-muted);
+  color: var(--color-primary);
+  border-color: hsl(220, 60%, 88%);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 640px) {
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
