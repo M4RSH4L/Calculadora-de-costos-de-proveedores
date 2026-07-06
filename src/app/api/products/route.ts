@@ -6,8 +6,11 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+    // Read the file relative to the project root so it works in Vercel/production
     const filePath = path.join(
-      'c:\\Users\\HOLA\\OneDrive\\Desktop\\proveedores\\Data Base',
+      process.cwd(),
+      'src',
+      'data',
       'productos_unificados_v2.json',
     );
     const fileContent = fs.readFileSync(filePath, 'utf8');
