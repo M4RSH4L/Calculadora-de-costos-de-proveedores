@@ -1,24 +1,42 @@
 'use client';
 
-import { X, Package, Tag, DollarSign, Hash, Info, Building2 } from 'lucide-react';
-import { ProductNormalized } from '@/lib/types';
+import { X, Package, Tag, DollarSign, Hash, Info, Building2, TrendingUp } from 'lucide-react';
+import { ProductResult } from '@/lib/types';
 import { formatPrice, getBrandConfig } from '@/lib/brands';
 import styles from './ConditionsDrawer.module.css';
 
 interface ConditionsDrawerProps {
-  product: ProductNormalized | null;
+  product: ProductResult | null;
   onClose: () => void;
 }
 
 export default function ConditionsDrawer({ product, onClose }: ConditionsDrawerProps) {
   if (!product) return null;
 
-  const brand = getBrandConfig(product.marca);
-  const savings = product.precio_sugerido
-    ? product.precio_sugerido - product.precio_con_iva
-    : null;
-  const margin = savings && product.precio_sugerido
-    ? ((savings / product.precio_sugerido) * 100).toFixed(1)
+  const nombre = product.producto?.nombre ?? '-';
+  const sku = product.producto?.sku ?? '-';
+  const categoria = product.producto?.categoria ?? '';
+  const presentacion = product.producto?.presentacion ?? '';
+
+  const sinIva = product.precios?.sin_iva ?? 0;
+  const conIva = product.precios?.con_iva ?? 0;
+  const ivaPct = product.precios?.porcentaje_iva ?? 21;
+  const sugerido = product.precios?.sugerido ?? null;
+
+  const margenValor = product.rentabilidad?.margen_valor ?? null;
+  const margenPct = product.rentabilidad?.margen_porcentaje ?? null;
+  const hasMargin = margenValor != null && margenValor > 0;
+
+  const provNombre = product.proveedor?.nombre ?? '-';
+  const metadata = product.proveedor?.metadata ?? null;
+  const metadataEntries = metadata ? Object.entries(metadata) : [];
+
+  const brand = getBrandConfig(categoria, provNombre);
+
+  const presentacionLabel = presentacion
+    ? parseFloat(presentacion) < 1
+      ? `${Math.round(parseFloat(presentacion) * 1000)} gramos`
+      : `${presentacion} kg`
     : null;
 
   return (
@@ -26,21 +44,18 @@ export default function ConditionsDrawer({ product, onClose }: ConditionsDrawerP
       <div className={styles.overlay} onClick={onClose} aria-hidden="true" />
       <div className={styles.drawer} role="dialog" aria-modal="true" aria-label="Condiciones del producto">
         {/* Header */}
-        <div
-          className={styles.drawerHeader}
-          style={{ background: brand.gradient }}
-        >
+        <div className={styles.drawerHeader} style={{ background: brand.gradient }}>
           <div className={styles.headerTop}>
             <span className={styles.drawerEmoji}>{brand.emoji}</span>
             <button className={styles.closeBtn} onClick={onClose} aria-label="Cerrar">
               <X size={18} strokeWidth={2.5} />
             </button>
           </div>
-          <h2 className={styles.drawerTitle}>{product.producto}</h2>
+          <h2 className={styles.drawerTitle}>{nombre}</h2>
           <div className={styles.drawerMeta}>
             <span>{brand.label}</span>
             <span className={styles.metaDot}>·</span>
-            <span>{product.proveedorLabel}</span>
+            <span>{provNombre}</span>
           </div>
         </div>
 
@@ -55,30 +70,52 @@ export default function ConditionsDrawer({ product, onClose }: ConditionsDrawerP
             <div className={styles.priceGrid}>
               <div className={styles.priceCell}>
                 <span className={styles.priceCellLabel}>Precio sin IVA</span>
-                <span className={styles.priceCellValue}>{formatPrice(product.precio_sin_iva)}</span>
+                <span className={styles.priceCellValue}>{formatPrice(sinIva)}</span>
               </div>
               <div className={`${styles.priceCell} ${styles.priceCellHighlight}`}>
-                <span className={styles.priceCellLabel}>Precio con IVA (21%)</span>
+                <span className={styles.priceCellLabel}>Precio con IVA ({ivaPct}%)</span>
                 <span className={`${styles.priceCellValue} ${styles.priceCellBig}`}>
-                  {formatPrice(product.precio_con_iva)}
+                  {formatPrice(conIva)}
                 </span>
               </div>
-              {product.precio_sugerido && (
+              {sugerido != null && (
                 <div className={styles.priceCell}>
                   <span className={styles.priceCellLabel}>Precio sugerido venta</span>
-                  <span className={styles.priceCellValue}>{formatPrice(product.precio_sugerido)}</span>
+                  <span className={styles.priceCellValue}>{formatPrice(sugerido)}</span>
                 </div>
               )}
-              {savings !== null && savings > 0 && (
+              {hasMargin && (
                 <div className={`${styles.priceCell} ${styles.priceCellSuccess}`}>
                   <span className={styles.priceCellLabel}>Margen estimado</span>
                   <span className={styles.priceCellValue}>
-                    {formatPrice(savings)} ({margin}%)
+                    {formatPrice(margenValor!)} ({margenPct?.toFixed(1)}%)
                   </span>
                 </div>
               )}
             </div>
           </section>
+
+          {/* Rentabilidad */}
+          {hasMargin && (
+            <section className={styles.section}>
+              <h3 className={styles.sectionTitle}>
+                <TrendingUp size={14} strokeWidth={2} />
+                Rentabilidad
+              </h3>
+              <div className={styles.infoList}>
+                <InfoRow
+                  icon={<TrendingUp size={12} />}
+                  label="Margen en valor"
+                  value={formatPrice(margenValor!)}
+                />
+                <InfoRow
+                  icon={<TrendingUp size={12} />}
+                  label="Margen porcentual"
+                  value={`${margenPct?.toFixed(1)}%`}
+                />
+              </div>
+            </section>
+          )}
 
           {/* Product info */}
           <section className={styles.section}>
@@ -87,38 +124,21 @@ export default function ConditionsDrawer({ product, onClose }: ConditionsDrawerP
               Información del producto
             </h3>
             <div className={styles.infoList}>
-              <InfoRow
-                icon={<Hash size={12} />}
-                label="SKU / Código"
-                value={product.sku}
-                mono
-              />
-              <InfoRow
-                icon={<Tag size={12} />}
-                label="Marca"
-                value={product.marca}
-              />
-              <InfoRow
-                icon={<Building2 size={12} />}
-                label="Proveedor"
-                value={product.proveedorLabel}
-              />
-              {product.categoria && (
+              <InfoRow icon={<Hash size={12} />} label="SKU / Código" value={sku} mono />
+              <InfoRow icon={<Tag size={12} />} label="Línea / Categoría" value={categoria || '-'} />
+              <InfoRow icon={<Building2 size={12} />} label="Proveedor" value={provNombre} />
+              {presentacionLabel && (
+                <InfoRow icon={<Package size={12} />} label="Presentación" value={presentacionLabel} />
+              )}
+              {/* Dynamic metadata */}
+              {metadataEntries.map(([key, value]) => (
                 <InfoRow
+                  key={key}
                   icon={<Info size={12} />}
-                  label="Categoría / Línea"
-                  value={product.categoria}
+                  label={key.replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())}
+                  value={value == null ? '-' : String(value)}
                 />
-              )}
-              {product.presentacion_kg && (
-                <InfoRow
-                  icon={<Package size={12} />}
-                  label="Presentación"
-                  value={product.presentacion_kg < 1
-                    ? `${product.presentacion_kg * 1000} gramos`
-                    : `${product.presentacion_kg} kg`}
-                />
-              )}
+              ))}
             </div>
           </section>
 
@@ -132,11 +152,11 @@ export default function ConditionsDrawer({ product, onClose }: ConditionsDrawerP
               <p className={styles.notesText}>
                 Las condiciones comerciales específicas (bonificaciones, descuentos,
                 financiación, logística) deben consultarse directamente con el
-                representante del proveedor <strong>{product.proveedorLabel}</strong>.
+                representante del proveedor <strong>{provNombre}</strong>.
               </p>
               <p className={styles.notesNote}>
                 ℹ️ Los precios mostrados corresponden a la lista de precios vigente.
-                IVA 21% aplicado automáticamente donde no figura en la lista.
+                IVA {ivaPct}% aplicado en origen.
               </p>
             </div>
           </section>
@@ -156,7 +176,10 @@ export default function ConditionsDrawer({ product, onClose }: ConditionsDrawerP
 }
 
 function InfoRow({
-  icon, label, value, mono = false
+  icon,
+  label,
+  value,
+  mono = false,
 }: {
   icon: React.ReactNode;
   label: string;

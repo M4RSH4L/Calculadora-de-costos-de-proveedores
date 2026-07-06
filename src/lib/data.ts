@@ -1,133 +1,153 @@
-import { ProductNormalized, AppData } from './types';
+import { ProductResult, AppData } from './types';
 
-const IVA_RATE = 1.21;
-
-interface VitalcanRaw {
-  marca: string;
-  sku: string;
-  producto: string;
-  precio_sin_iva: number | null;
-  precio_sugerido: number | null;
-}
-
-interface PurinaRaw {
-  marca: string;
-  categoria: string;
-  sku: string;
-  producto: string;
-  presentacion_kg: number | null;
-  precio_sin_iva: number | null;
-  precio_con_iva: number | null;
-  precio_sugerido: number | null;
-}
-
-interface RawData {
-  vitalcan: VitalcanRaw[];
-  purina: PurinaRaw[];
-}
-
+// ─── Cache ────────────────────────────────────────────────────────────────────
 let cachedData: AppData | null = null;
 
-export function normalizeData(raw: RawData): AppData {
-  const products: ProductNormalized[] = [];
+/**
+ * Formats a raw product name to look clean and professional.
+ * Removes redundant category prefixes (e.g. "NG EXCELLENT CAT") and formats
+ * stages to Title Case, appending them nicely.
+ */
+function formatProductName(rawName: string): string {
+  if (!rawName) return '';
+  const parts = rawName.split(' - ').map((p) => p.trim());
 
-  // Normalize Vitalcan
-  for (const item of raw.vitalcan) {
-    if (!item.precio_sin_iva || item.sku === '(*)') continue;
-    products.push({
-      id: `vitalcan_${item.sku}`,
-      proveedor: 'vitalcan',
-      proveedorLabel: 'Vitalcan',
-      marca: item.marca || 'Vitalcan',
-      sku: item.sku,
-      producto: item.producto,
-      precio_sin_iva: item.precio_sin_iva,
-      precio_con_iva: Math.round(item.precio_sin_iva * IVA_RATE * 100) / 100,
-      precio_sugerido: item.precio_sugerido ?? undefined,
-    });
+  if (parts.length === 4) {
+    const [, etapa, producto, peso] = parts;
+    const formattedEtapa = etapa.charAt(0).toUpperCase() + etapa.slice(1).toLowerCase();
+    return `${producto} - ${peso}, ${formattedEtapa}`;
   }
 
-  // Normalize Purina
-  for (const item of raw.purina) {
-    if (!item.precio_sin_iva) continue;
-    const marcaDisplay = item.categoria
-      ? categoriaToBrand(item.categoria)
-      : (item.marca || 'Purina');
-
-    products.push({
-      id: `purina_${item.sku}`,
-      proveedor: 'purina',
-      proveedorLabel: 'Purina (Nestlé)',
-      marca: marcaDisplay,
-      sku: item.sku,
-      producto: buildPurinaProductName(item),
-      categoria: item.categoria,
-      presentacion_kg: item.presentacion_kg ?? undefined,
-      precio_sin_iva: item.precio_sin_iva,
-      precio_con_iva: item.precio_con_iva && item.precio_con_iva > 0
-        ? item.precio_con_iva
-        : Math.round(item.precio_sin_iva * IVA_RATE * 100) / 100,
-      precio_sugerido: item.precio_sugerido ?? undefined,
-    });
+  if (parts.length === 3) {
+    const [, etapa, producto] = parts;
+    const formattedEtapa = etapa.charAt(0).toUpperCase() + etapa.slice(1).toLowerCase();
+    return `${producto}, ${formattedEtapa}`;
   }
 
-  const allMarcas = [...new Set(products.map(p => p.marca))].sort();
-  const allProveedores = [...new Set(products.map(p => p.proveedorLabel))].sort();
+  if (parts.length === 2) {
+    const [, producto] = parts;
+    return producto;
+  }
+
+  return rawName;
+}
+
+/**
+ * Validates and cleans a raw item from productos_unificados_v2.json.
+ * Returns null if the item is missing critical fields (name, SKU) and
+ * should be excluded from the UI.
+ */
+function validateItem(raw: unknown): ProductResult | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const item = raw as Record<string, unknown>;
+
+  // Critical: must have an id and a product object
+  if (!item.id_interno || typeof item.id_interno !== 'string') return null;
+
+  const prod = item.producto as Record<string, unknown> | undefined;
+  if (!prod) return null;
+
+  const rawNombre = typeof prod.nombre === 'string' ? prod.nombre.trim() : '';
+  const nombre = formatProductName(rawNombre);
+  const sku = typeof prod.sku === 'string' ? prod.sku.trim() : '';
+
+  // Exclude rows with no meaningful name or SKU
+  if (!nombre || !sku) return null;
+
+  const precos = (item.precios as Record<string, unknown>) ?? {};
+  const rent = (item.rentabilidad as Record<string, unknown>) ?? {};
+  const prov = (item.proveedor as Record<string, unknown>) ?? {};
+  const meta = (prov.metadata as Record<string, unknown>) ?? {};
 
   return {
-    products,
-    stats: {
-      totalProducts: products.length,
-      totalProveedores: allProveedores.length,
-      totalMarcas: allMarcas.length,
-      lastUpdated: new Date().toLocaleDateString('es-AR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      }),
-      proveedores: allProveedores,
-      marcas: allMarcas,
+    id_interno: item.id_interno,
+    producto: {
+      nombre,
+      sku,
+      categoria: typeof prod.categoria === 'string' ? prod.categoria.trim() : '',
+      presentacion: typeof prod.presentacion === 'string' ? prod.presentacion.trim() : '',
+    },
+    precios: {
+      sin_iva: typeof precos.sin_iva === 'number' ? precos.sin_iva : 0,
+      porcentaje_iva: typeof precos.porcentaje_iva === 'number' ? precos.porcentaje_iva : 21,
+      con_iva: typeof precos.con_iva === 'number' ? precos.con_iva : 0,
+      sugerido: typeof precos.sugerido === 'number' ? precos.sugerido : null,
+    },
+    rentabilidad: {
+      margen_porcentaje:
+        typeof rent.margen_porcentaje === 'number' ? rent.margen_porcentaje : null,
+      margen_valor: typeof rent.margen_valor === 'number' ? rent.margen_valor : null,
+    },
+    proveedor: {
+      nombre: typeof prov.nombre === 'string' ? prov.nombre.trim() : 'Desconocido',
+      metadata: Object.fromEntries(
+        Object.entries(meta).map(([k, v]) => [
+          k,
+          typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? v : null,
+        ]),
+      ),
     },
   };
 }
 
-function categoriaToBrand(categoria: string): string {
-  const map: Record<string, string> = {
-    'NG FANCY FEAST': 'Fancy Feast',
-    'NG TIDY CATS': 'Tidy Cats',
-    'NG GATI': 'Gati',
-    'NG BONZO': 'Bonzo',
-    'NG DOGUI': 'Dogui',
-    'NG DENTALIFE': 'Dentalife',
-    'NG EXCELLENT CAT': 'Excellent Cat',
-    'NG EXCELLENT DOG': 'Excellent Dog',
-    'CONSOLIDADA': 'Purina',
-    'CONSOLIDADA1': 'Purina',
-    'CONSOLIDADA.': 'Purina',
-    'CONSOLIDADO': 'Purina',
+/**
+ * Builds aggregate stats from the validated product list.
+ */
+function buildStats(products: ProductResult[]): AppData['stats'] {
+  const proveedores = [...new Set(products.map((p) => p.proveedor.nombre))].sort();
+  const categorias = [
+    ...new Set(products.map((p) => p.producto.categoria).filter(Boolean)),
+  ].sort();
+
+  return {
+    totalProducts: products.length,
+    totalProveedores: proveedores.length,
+    totalCategorias: categorias.length,
+    lastUpdated: new Date().toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+    }),
+    proveedores,
+    categorias,
   };
-  return map[categoria] || 'Purina';
 }
 
-function buildPurinaProductName(item: PurinaRaw): string {
-  const brand = categoriaToBrand(item.categoria);
-  const parts = [brand, item.producto];
-  if (item.presentacion_kg) {
-    const kgStr = item.presentacion_kg < 1
-      ? `${item.presentacion_kg * 1000}g`
-      : `${item.presentacion_kg}kg`;
-    parts.push(kgStr);
-  }
-  return parts.join(' ');
+/**
+ * Parses the raw JSON array from productos_unificados_v2.json into AppData.
+ * Invalid/incomplete rows are silently dropped.
+ */
+export function normalizeData(raw: unknown[]): AppData {
+  const products: ProductResult[] = raw
+    .map(validateItem)
+    .filter((p): p is ProductResult => p !== null);
+
+  return { products, stats: buildStats(products) };
 }
 
+/**
+ * Fetches and caches the product data from the API.
+ * Busts the cache when called after a server restart.
+ */
 export async function loadAppData(): Promise<AppData> {
   if (cachedData) return cachedData;
 
-  const response = await fetch('/data/base_datos_app.json');
-  if (!response.ok) throw new Error('Failed to load product data');
+  const response = await fetch('/api/products', { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Failed to load product data: ${response.status} ${response.statusText}`);
+  }
 
-  const raw: RawData = await response.json();
+  const raw: unknown = await response.json();
+
+  if (!Array.isArray(raw)) {
+    throw new Error('Invalid product data: expected an array');
+  }
+
   cachedData = normalizeData(raw);
   return cachedData;
+}
+
+/** Clears the in-memory cache (useful for hot-reload scenarios). */
+export function clearCache(): void {
+  cachedData = null;
 }

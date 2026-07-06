@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Search, SlidersHorizontal, X, Loader2 } from 'lucide-react';
-import { ProductNormalized } from '@/lib/types';
+import { ProductResult } from '@/lib/types';
 import { AppData } from '@/lib/types';
 import { loadAppData } from '@/lib/data';
-import { initSearch, filterByMarca } from '@/lib/search';
+import { initSearch, filterByCategoria } from '@/lib/search';
 import Header from '@/components/Header/Header';
 import SearchBar from '@/components/SearchBar/SearchBar';
 import BrandGrid from '@/components/BrandGrid/BrandGrid';
@@ -23,9 +23,9 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('home');
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<ProductNormalized[]>([]);
+  const [searchResults, setSearchResults] = useState<ProductResult[]>([]);
   const [activeMarca, setActiveMarca] = useState<string | null>(null);
-  const [selectedProduct, setSelectedProduct] = useState<ProductNormalized | null>(null);
+  const [selectedProduct, setSelectedProduct] = useState<ProductResult | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
 
@@ -42,7 +42,7 @@ export default function HomePage() {
       });
   }, []);
 
-  const handleSearch = useCallback((query: string, results: ProductNormalized[]) => {
+  const handleSearch = useCallback((query: string, results: ProductResult[]) => {
     setSearchQuery(query);
     setSearchResults(results);
     setViewMode('search');
@@ -71,7 +71,7 @@ export default function HomePage() {
     if (!appData) return [];
     if (viewMode === 'search') return searchResults;
     if (viewMode === 'brand' && activeMarca) {
-      return filterByMarca(appData.products, activeMarca);
+      return filterByCategoria(appData.products, activeMarca);
     }
     return [];
   }, [appData, viewMode, searchResults, activeMarca]);
@@ -79,9 +79,10 @@ export default function HomePage() {
   // Find products with same name across providers for comparison
   const compareGroups = useMemo(() => {
     if (!showCompare || displayedProducts.length < 2) return [];
-    const groups: Record<string, ProductNormalized[]> = {};
+    const groups: Record<string, ProductResult[]> = {};
     displayedProducts.forEach(p => {
-      const key = p.producto.toLowerCase().trim();
+      // Group by normalized product name (strip weight/size suffix for matching)
+      const key = (p.producto?.nombre ?? '').toLowerCase().trim();
       if (!groups[key]) groups[key] = [];
       groups[key].push(p);
     });
@@ -112,8 +113,8 @@ export default function HomePage() {
               </h1>
               <p className={styles.heroSubtitle}>
                 {appData.stats.totalProducts.toLocaleString('es-AR')} productos ·{' '}
-                {appData.stats.totalProveedores} proveedores ·{' '}
-                {appData.stats.totalMarcas} marcas
+                {appData.stats.totalProveedores} proveedor{appData.stats.totalProveedores !== 1 ? 'es' : ''} ·{' '}
+                {appData.stats.totalCategorias} líneas
               </p>
             </div>
 
@@ -199,14 +200,14 @@ export default function HomePage() {
                   {displayedProducts.map((product, index) => {
                     // Find cheapest among same-named products
                     const sameNameProducts = displayedProducts.filter(
-                      p => p.producto.toLowerCase() === product.producto.toLowerCase()
+                      p => (p.producto?.nombre ?? '').toLowerCase() === (product.producto?.nombre ?? '').toLowerCase()
                     );
                     const isBest = sameNameProducts.length > 1 &&
-                      product.precio_con_iva === Math.min(...sameNameProducts.map(p => p.precio_con_iva));
+                      (product.precios?.con_iva ?? 0) === Math.min(...sameNameProducts.map(p => p.precios?.con_iva ?? 0));
 
                     return (
                       <ProductCard
-                        key={product.id}
+                        key={product.id_interno}
                         product={product}
                         isBestPrice={isBest}
                         onViewConditions={setSelectedProduct}

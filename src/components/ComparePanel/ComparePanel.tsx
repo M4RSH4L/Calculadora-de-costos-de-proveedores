@@ -1,23 +1,25 @@
 'use client';
 
 import { TrendingDown, Award } from 'lucide-react';
-import { ProductNormalized } from '@/lib/types';
+import { ProductResult } from '@/lib/types';
 import { formatPrice, getBrandConfig } from '@/lib/brands';
 import styles from './ComparePanel.module.css';
 
 interface ComparePanelProps {
-  products: ProductNormalized[];
-  onViewConditions: (product: ProductNormalized) => void;
+  products: ProductResult[];
+  onViewConditions: (product: ProductResult) => void;
 }
 
 export default function ComparePanel({ products, onViewConditions }: ComparePanelProps) {
   if (products.length < 2) return null;
 
-  const sorted = [...products].sort((a, b) => a.precio_con_iva - b.precio_con_iva);
-  const bestPrice = sorted[0].precio_con_iva;
-  const worstPrice = sorted[sorted.length - 1].precio_con_iva;
+  const sorted = [...products].sort(
+    (a, b) => (a.precios?.con_iva ?? 0) - (b.precios?.con_iva ?? 0),
+  );
+  const bestPrice = sorted[0].precios?.con_iva ?? 0;
+  const worstPrice = sorted[sorted.length - 1].precios?.con_iva ?? 0;
   const savings = worstPrice - bestPrice;
-  const savingsPct = ((savings / worstPrice) * 100).toFixed(1);
+  const savingsPct = worstPrice > 0 ? ((savings / worstPrice) * 100).toFixed(1) : '0.0';
 
   return (
     <div className={styles.container}>
@@ -41,12 +43,19 @@ export default function ComparePanel({ products, onViewConditions }: ComparePane
       <div className={styles.columns}>
         {sorted.map((product, index) => {
           const isBest = index === 0;
-          const brand = getBrandConfig(product.marca);
-          const diffPct = ((product.precio_con_iva - bestPrice) / bestPrice * 100).toFixed(1);
+          const conIva = product.precios?.con_iva ?? 0;
+          const sinIva = product.precios?.sin_iva ?? 0;
+          const sugerido = product.precios?.sugerido ?? null;
+          const categoria = product.producto?.categoria ?? '';
+          const provNombre = product.proveedor?.nombre ?? '-';
+          const brand = getBrandConfig(categoria, provNombre);
+          const diffPct = bestPrice > 0
+            ? (((conIva - bestPrice) / bestPrice) * 100).toFixed(1)
+            : '0.0';
 
           return (
             <div
-              key={product.id}
+              key={product.id_interno}
               className={`${styles.column} ${isBest ? styles.bestColumn : ''}`}
             >
               {isBest && (
@@ -56,25 +65,22 @@ export default function ComparePanel({ products, onViewConditions }: ComparePane
                 </div>
               )}
 
-              <div
-                className={styles.columnHeader}
-                style={{ background: brand.gradient }}
-              >
+              <div className={styles.columnHeader} style={{ background: brand.gradient }}>
                 <span className={styles.columnEmoji}>{brand.emoji}</span>
                 <div className={styles.columnHeaderText}>
                   <span className={styles.columnBrand}>{brand.label}</span>
-                  <span className={styles.columnProvider}>{product.proveedorLabel}</span>
+                  <span className={styles.columnProvider}>{provNombre}</span>
                 </div>
               </div>
 
               <div className={styles.columnBody}>
-                <div className={styles.columnProduct}>{product.producto}</div>
+                <div className={styles.columnProduct}>{product.producto?.nombre ?? '-'}</div>
 
                 <div className={`${styles.priceBlock} ${isBest ? styles.priceBlockBest : ''}`}>
                   <span className={styles.priceSubLabel}>Sin IVA</span>
-                  <span className={styles.priceSub}>{formatPrice(product.precio_sin_iva)}</span>
+                  <span className={styles.priceSub}>{formatPrice(sinIva)}</span>
                   <span className={styles.priceMainLabel}>Con IVA</span>
-                  <span className={styles.priceMain}>{formatPrice(product.precio_con_iva)}</span>
+                  <span className={styles.priceMain}>{formatPrice(conIva)}</span>
                   {!isBest && (
                     <span className={styles.diffBadge}>+{diffPct}% más caro</span>
                   )}
@@ -83,10 +89,10 @@ export default function ComparePanel({ products, onViewConditions }: ComparePane
                   )}
                 </div>
 
-                {product.precio_sugerido && (
+                {sugerido != null && (
                   <div className={styles.sugeridoRow}>
                     <span className={styles.sugeridoLabel}>P. Sugerido</span>
-                    <span className={styles.sugeridoValue}>{formatPrice(product.precio_sugerido)}</span>
+                    <span className={styles.sugeridoValue}>{formatPrice(sugerido)}</span>
                   </div>
                 )}
 

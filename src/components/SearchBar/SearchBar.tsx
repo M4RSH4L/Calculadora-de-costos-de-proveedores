@@ -2,20 +2,20 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, X, ChevronRight, Package, Tag } from 'lucide-react';
-import { ProductNormalized } from '@/lib/types';
+import { ProductResult } from '@/lib/types';
 import { getSuggestions, searchProducts } from '@/lib/search';
 import { formatPrice, getBrandConfig } from '@/lib/brands';
 import styles from './SearchBar.module.css';
 
 interface SearchBarProps {
-  products: ProductNormalized[];
-  onSearch: (query: string, results: ProductNormalized[]) => void;
+  products: ProductResult[];
+  onSearch: (query: string, results: ProductResult[]) => void;
   onClear: () => void;
 }
 
 export default function SearchBar({ products, onSearch, onClear }: SearchBarProps) {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState<ProductNormalized[]>([]);
+  const [suggestions, setSuggestions] = useState<ProductResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [isFocused, setIsFocused] = useState(false);
@@ -69,10 +69,11 @@ export default function SearchBar({ products, onSearch, onClear }: SearchBarProp
     setSuggestions([]);
   }, [query, products, onSearch]);
 
-  const handleSelectSuggestion = useCallback((product: ProductNormalized) => {
-    setQuery(product.producto);
-    const results = searchProducts(product.producto, products);
-    onSearch(product.producto, results);
+  const handleSelectSuggestion = useCallback((product: ProductResult) => {
+    const nombre = product.producto?.nombre ?? '';
+    setQuery(nombre);
+    const results = searchProducts(nombre, products);
+    onSearch(nombre, results);
     setIsOpen(false);
     setSuggestions([]);
     inputRef.current?.blur();
@@ -199,10 +200,15 @@ export default function SearchBar({ products, onSearch, onClear }: SearchBarProp
             <span className={styles.count}>{suggestions.length} resultados</span>
           </div>
           {suggestions.map((product, index) => {
-            const brand = getBrandConfig(product.marca);
+            const cat = product.producto?.categoria ?? '';
+            const prov = product.proveedor?.nombre ?? '';
+            const brand = getBrandConfig(cat, prov);
+            const nombre = product.producto?.nombre ?? '-';
+            const sku = product.producto?.sku ?? '-';
+            const conIva = product.precios?.con_iva ?? 0;
             return (
               <button
-                key={product.id}
+                key={product.id_interno}
                 className={`${styles.suggestion} ${index === activeIndex ? styles.suggestionActive : ''}`}
                 onClick={() => handleSelectSuggestion(product)}
                 role="option"
@@ -216,26 +222,18 @@ export default function SearchBar({ products, onSearch, onClear }: SearchBarProp
                 </div>
                 <div className={styles.suggestionContent}>
                   <span className={styles.suggestionName}>
-                    {highlightMatch(product.producto, query)}
+                    {highlightMatch(nombre, query)}
                   </span>
                   <span className={styles.suggestionMeta}>
                     <Tag size={11} />
-                    {product.sku}
+                    {sku}
                     <span className={styles.dot}>·</span>
-                    {product.proveedorLabel}
-                    {product.presentacion_kg && (
-                      <>
-                        <span className={styles.dot}>·</span>
-                        {product.presentacion_kg < 1
-                          ? `${product.presentacion_kg * 1000}g`
-                          : `${product.presentacion_kg}kg`}
-                      </>
-                    )}
+                    {prov || '-'}
                   </span>
                 </div>
                 <div className={styles.suggestionPrice}>
                   <span className={styles.priceLabel}>c/ IVA</span>
-                  <span className={styles.priceValue}>{formatPrice(product.precio_con_iva)}</span>
+                  <span className={styles.priceValue}>{formatPrice(conIva)}</span>
                 </div>
               </button>
             );

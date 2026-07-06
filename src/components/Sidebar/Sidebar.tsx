@@ -37,8 +37,8 @@ export default function Sidebar({ data, isOpen }: SidebarProps) {
           />
           <StatCard
             icon={<Layers size={16} strokeWidth={2} />}
-            label="Marcas"
-            value={stats.totalMarcas.toString()}
+            label="Líneas"
+            value={stats.totalCategorias.toString()}
             color="amber"
           />
         </div>
@@ -57,11 +57,11 @@ export default function Sidebar({ data, isOpen }: SidebarProps) {
           </div>
         </div>
 
-        {/* Marcas */}
+        {/* Categorías */}
         <div className={styles.section}>
-          <h4 className={styles.sectionTitle}>Marcas disponibles</h4>
+          <h4 className={styles.sectionTitle}>Líneas y categorías</h4>
           <div className={styles.tagList}>
-            {stats.marcas.map(m => (
+            {(stats.categorias ?? []).map((m: string) => (
               <span key={m} className={styles.tag}>{m}</span>
             ))}
           </div>
